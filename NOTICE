@@ -9,5 +9,10 @@ Licensed under Apache 2 - http://www.apache.org/licenses/LICENSE-2.0.html
 This software includes third party software subject to the following licenses:
 
   Digipost Java Logging to SLF4J Bridge JUnit Extension under The Apache Software License, Version 2.0
+  JUL to SLF4J bridge under MIT License
+  JUnit Jupiter API under Eclipse Public License v2.0
+  JUnit Platform Commons under Eclipse Public License v2.0
+  org.apiguardian:apiguardian-api under The Apache License, Version 2.0
+  org.opentest4j:opentest4j under The Apache License, Version 2.0
 
 
