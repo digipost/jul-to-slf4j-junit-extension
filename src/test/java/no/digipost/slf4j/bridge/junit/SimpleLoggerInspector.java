@@ -15,34 +15,36 @@
  */
 package no.digipost.slf4j.bridge.junit;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.Appender;
-import ch.qos.logback.core.AppenderBase;
+import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
-import org.slf4j.LoggerFactory;
 
-import java.util.Deque;
-import java.util.Iterator;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
 import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.stream.Stream;
 
 import static java.util.stream.Collectors.toList;
 
-public class LogbackInspector extends AppenderBase<ILoggingEvent> {
+public class SimpleLoggerInspector implements AutoCloseable {
 
-    public static class Extension implements BeforeEachCallback, ParameterResolver {
+    public static class Extension implements BeforeEachCallback, AfterEachCallback, ParameterResolver {
 
-        private final LogbackInspector logInspector = LogbackInspector.resolveFromLogback();
+        private SimpleLoggerInspector logInspector;
 
         @Override
         public void beforeEach(ExtensionContext context) throws Exception {
-            logInspector.clear();
+            logInspector = new SimpleLoggerInspector();
+            logInspector.injectIntoSystemOut();
+        }
+
+        @Override
+        public void afterEach(ExtensionContext context) throws Exception {
+            logInspector.close();
         }
 
         @Override
@@ -55,33 +57,40 @@ public class LogbackInspector extends AppenderBase<ILoggingEvent> {
             return logInspector;
         }
 
+
     }
 
-    public static LogbackInspector resolveFromLogback() {
-        Logger rootLogger = (Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        Iterator<Appender<ILoggingEvent>> appenders = rootLogger.iteratorForAppenders();
-        while (appenders.hasNext()) {
-            Appender<ILoggingEvent> appender = appenders.next();
-            if (appender instanceof LogbackInspector) {
-                return (LogbackInspector) appender;
-            }
+    private final PrintStream spyStream;
+    private final ByteArrayOutputStream logSink;
+    private PrintStream originalSystemOut;
+
+    public SimpleLoggerInspector() {
+        logSink = new ByteArrayOutputStream();
+        spyStream = new PrintStream(logSink, true);
+    }
+
+    public void injectIntoSystemOut() {
+        originalSystemOut = System.out;
+        System.setOut(spyStream);
+    }
+
+    public void restoreSystemOut() {
+        if (originalSystemOut != null) {
+            System.setOut(originalSystemOut);
+            this.originalSystemOut = null;
         }
-        throw new NoSuchElementException("appender of type " + LogbackInspector.class.getName());
     }
 
-    private final Deque<ILoggingEvent> logged = new ConcurrentLinkedDeque<>();
+
+    public List<String> allLoggedLines() {
+        return Stream.of(logSink.toString().split("\\r?\\n")).collect(toList());
+    }
 
     @Override
-    protected void append(ILoggingEvent event) {
-        this.logged.addLast(event);
-    }
-
-    public List<String> allLoggedMessages() {
-        return logged.stream().map(ILoggingEvent::getFormattedMessage).collect(toList());
-    }
-
-    public void clear() {
-        this.logged.clear();
+    public void close() throws IOException {
+        restoreSystemOut();
+        spyStream.close();
+        logSink.close();
     }
 
 }
