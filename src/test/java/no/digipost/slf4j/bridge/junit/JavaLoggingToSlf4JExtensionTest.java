@@ -23,13 +23,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static uk.co.probablyfine.matchers.Java8Matchers.where;
 
-@ExtendWith(LogbackInspector.Extension.class)
+@ExtendWith(SimpleLoggerInspector.Extension.class)
 class JavaLoggingToSlf4JExtensionTest {
 
     @Test
-    void logsToSlf4J(LogbackInspector logback) {
+    void logsToSlf4J(SimpleLoggerInspector logInspector) {
         Logger.getLogger(JavaLoggingToSlf4JExtensionTest.class.getName()).info("Message logged to SLF4J");
-        assertThat(logback, where(LogbackInspector::allLoggedMessages, hasItem("Message logged to SLF4J")));
+        assertThat(logInspector, where(SimpleLoggerInspector::allLoggedLines, hasItem("[INFO] Message logged to SLF4J")));
     }
 
 }
